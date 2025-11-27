@@ -56,7 +56,7 @@ def get_messages():
 
 @app.route('/')
 def hello():
-    return "Hello, Serverless! 🚀\n", 200, {'Content-Type': 'text/plain'}
+    return "Hello, Serverless! From Svyat with Love.", 200, {'Content-Type': 'text/plain'}
 
 @app.route('/echo', methods=['POST'])
 def echo():
@@ -68,4 +68,5 @@ def echo():
     })
 
 if __name__ == '__main__':
+
     app.run(host='0.0.0.0', port=5000)
