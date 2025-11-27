@@ -1,0 +1,71 @@
+from os import system as cmd
+while(True):
+    try:
+        from flask import Flask, request, jsonify
+        import psycopg
+        import os
+        break
+    except ModuleNotFoundError as module:
+        module = str(module)
+        print(f"Пакет {module} не был найден. Установка.")
+        cmd(f"pip install {module.partition('\'')[2][:-1]}")
+
+app = Flask(__name__)
+
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    conn = psycopg.connect(DATABASE_URL)
+else:
+    conn = None
+
+if conn:
+    with conn.cursor() as cur:
+        cur.execute("""
+            create table if not exists messages (
+                id serial primary key,
+                content text not null,
+                created_at timestamp default now()
+            )
+        """)
+        conn.commit()
+
+@app.route('/save', methods=['POST'])
+def save_message():
+    if not conn:
+        return jsonify({"error": "DB not connected"}), 500
+    
+    data = request.get_json()
+    message = data.get('message', "") if data else ''
+
+    with conn.cursor() as cur:
+        cur.execute("insert into messages (content) values (%s)", (message,))
+        conn.commit()
+    return jsonify({"status": "saved", "message": message})
+
+@app.route('/messages')
+def get_messages():
+    if not conn:
+        return jsonify({"error": "DB not connected"}), 500
+
+    with conn.cursor() as cur:
+        cur.execute("select id, content, created_at from messages order by id desc limit 10")
+        rows = cur.fetchall()
+    
+    messages = [{"id": r[0], "text": r[1], "time": r[2].isoformat()} for r in rows]
+    return jsonify(messages)
+
+@app.route('/')
+def hello():
+    return "Hello, Serverless! 🚀\n", 200, {'Content-Type': 'text/plain'}
+
+@app.route('/echo', methods=['POST'])
+def echo():
+    data = request.get_json()
+    return jsonify({
+        "status": "received",
+        "you_sent": data,
+        "length": len(str(data)) if data else 0
+    })
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
